@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>COMPLIMENT ME</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+	<h1>COMPLIMENT ME</h1>
+	<div id="cameraFeed">
+		<video id="videoFeed" autoplay></video>
+	</div>
+    <div class="controller">
+        <button id="snap">Capture</button>
+    </div>
+    <img id="image" src="" style="display: none;">
+    <div id="loading">
+        <div class="text-container">
+            <p id="coreText">Processing image, please wait...</p>
+            <img id= 'spinner' src="loadWhite.svg" alt="Loading spinner">
+        </div>
+    </div>
+	
+	<script>
+		
+		const video = document.getElementById('videoFeed');
+		const snap = document.getElementById('snap');
+		const errorMsgElement = document.getElementById('ErrorMsg');
+
+		const constraints = {
+		    video: {
+		        width: 1280,
+		        height: 720,
+		    }
+		};
+
+		async function init(){
+		    try{
+		        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+		        handleSuccess(stream);
+		    }
+		    catch(e){
+		        errorMsgElement.innerHTML = `navigator.getUserMedia.error:${e.toString()}`;
+		    }
+		}
+
+		function handleSuccess(stream){
+		    window.stream = stream;
+		    video.srcObject = stream;
+		}
+
+		init();
+
+		snap.addEventListener("click", function() {
+		  var img = document.getElementById('image');
+		  var canvas = document.createElement('canvas');
+		  canvas.width = video.videoWidth;
+		  canvas.height = video.videoHeight;
+		  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+		  var dataURL = canvas.toDataURL('image/png');
+		  img.src = dataURL;
+
+
+		  var byteString = atob(dataURL.split(',')[1]);
+			var mimeString = dataURL.split(',')[0].split(':')[1].split(';')[0];
+			var ab = new ArrayBuffer(byteString.length);
+			var ia = new Uint8Array(ab);
+			for (var i = 0; i < byteString.length; i++) {
+				ia[i] = byteString.charCodeAt(i);
+			}
+			var blob = new Blob([ab], { type: mimeString });
+
+
+
+
+		  let formData = new FormData(); 
+
+		  formData.append('file', blob, 'image.png');
+
+		  document.getElementById('loading').classList.add('fade-in');
+
+		  tempText = document.getElementById('coreText').textContent
+		  waitTime = 10000
+
+		  fetch('http://192.168.50.210:12346/upload', {
+				method: 'POST',
+				body: formData,
+			})
+			.then(response => response.json())
+			.then(data => {
+				document.getElementById('spinner').classList.add('fade-out');
+				document.getElementById('coreText').textContent = data.message;
+				if (data.message == 'Please have only one person in the photo :)'){
+					waitTime = 5000
+				}
+				// Wait 5 seconds and hide loading div
+				console.log(data.message);
+				setTimeout(() => {
+					document.getElementById('loading').classList.add('fade-out');
+					setTimeout(() => {
+						document.getElementById('coreText').textContent = tempText;
+					}, 1000);
+				}, waitTime);
+			})
+			.catch(error => {
+				console.log('error:', error);
+			});
+			document.getElementById('loading').classList.remove('fade-out');
+		});
+
+        // const cameraFeed = document.getElementById('cameraFeed');
+        // const takePictureButton = document.getElementById('snap');
+
+        // takePictureButton.addEventListener('click', () => {
+        //     cameraFeed.classList.add('camera-flash');
+        //     setTimeout(() => {
+        //         cameraFeed.classList.remove('camera-flash');
+        //     }, 300);
+        // });
+
+        // const loading = document.querySelector('#loading');
+
+        // takePictureButton.addEventListener('click', () => {
+        //     var loading = document.getElementById("loading");
+
+        //     // Add the "loading-fade-in" class to fade in the loading message
+        //     loading.classList.add("loading-fade-in");
+
+        //     setTimeout(function() {
+        //         loading.classList.remove("loading-fade-in");
+        //     }, 10000);
+        //     // Here you can add your code to process the image
+        // });
+
+	</script>
+</body>
+</html>
+
